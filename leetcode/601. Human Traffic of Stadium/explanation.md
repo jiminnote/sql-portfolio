@@ -1,69 +1,31 @@
-# Explanation: LeetCode 601. Human Traffic of Stadium
+# 601. Human Traffic of Stadium - 해설
 
-## 1. 문제 핵심 요약
-Stadium 방문자 수 중 **people >= 100** 인 날만 고려하고,  
-그 날들이 **id 기준으로 3일 이상 연속**일 때  
-해당 연속 구간의 모든 기록을 출력하는 문제이다.
+## 난이도
+Hard
 
-이 문제의 핵심은 “연속된 날짜(id)” 구간을 식별하는 것이다.
+## 핵심 개념
+- ROW_NUMBER() 윈도우 함수
+- 연속 구간 탐지 기법 (id - ROW_NUMBER)
+- CTE를 활용한 단계별 처리
+- HAVING으로 그룹 필터링
 
----
+## 접근 방식
+1. people >= 100인 행만 필터링
+2. id - ROW_NUMBER()로 연속 그룹 식별
+3. 그룹별 개수가 3개 이상인 그룹만 선택
+4. 해당 그룹의 모든 행 출력
 
-## 2. 접근 전략
+## 핵심 기법: 연속 구간 탐지
+- id - ROW_NUMBER() OVER (ORDER BY id) AS grp
+- 연속된 id는 같은 grp 값을 가짐
+- 끊어지면 grp 값이 달라짐
 
-### (1) 우선 people >= 100인 행만 필터한다.
+## 왜 이 방식이 작동하는가?
+- id가 연속이면: (n+1) - (m+1) = n - m (차이 유지)
+- id가 끊어지면: (n+k) - (m+1) ≠ n - m (차이 증가)
 
-### (2) "연속 구간" 탐지 기법
-Window Function 기반 연속 그룹화의 대표 패턴:
-```sql
-id - ROW_NUMBER() OVER (ORDER BY id)
-```
-예시:  
-id 값이 5,6,7,10,11,12 라면
+## 3개 이상 필터링
+- WHERE grp IN (SELECT grp FROM cte GROUP BY grp HAVING COUNT(*) >= 3)
 
-| id | row_number | id - rn | 결과 |
-|----|------------|---------|------|
-| 5  | 1          | 4       | 그룹 A |
-| 6  | 2          | 4       | 그룹 A |
-| 7  | 3          | 4       | 그룹 A |
-|10  | 4          | 6       | 그룹 B |
-|11  | 5          | 6       | 그룹 B |
-|12  | 6          | 6       | 그룹 B |
-
-같은 결과값(id - rn)이면 **연속 구간**임을 의미.
-
----
-
-## 3. CTE 구성 설명
-
-```sql
-WITH cte AS (
-    SELECT
-        s.*,
-        id - ROW_NUMBER() OVER (ORDER BY id) AS grp
-    FROM Stadium s
-    WHERE people >= 100
-)
-```
-	- 연속 id마다 같은 grp 값 생성
-	- people 조건을 미리 필터링하여 성능 최적화
-
----
-
-## 4. 3개 이상 연속된 구간 필터링
-```sql
-WHERE grp IN (
-    SELECT grp
-    FROM cte
-    GROUP BY grp
-    HAVING COUNT(*) >= 3
-)
-```
-이 부분이 “연속된 3일 이상” 구간만 추출하는 핵심.
-
----
-
-## 5. 성능 관점 메모
--	people >= 100 필터를 먼저 적용해 데이터량 감소
-- Window Function 계산 비용 감소
-- 인덱스: Stadium(id), Stadium(people) 있으면 유리
+## 시간복잡도
+O(n log n) - 윈도우 함수 정렬

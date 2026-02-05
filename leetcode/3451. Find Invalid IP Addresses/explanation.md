@@ -1,39 +1,39 @@
-# Explanation: LeetCode 3451. Find Invalid IP Addresses
+# 3451. Find Invalid IP Addresses - 해설
 
-## 1. 문제 핵심 요약
-서버 로그 테이블 logs에서 잘못된 IPv4 주소만 찾아 빈도수를 계산하는 SQL 문제이다.
+## 난이도
+Hard
 
-IPv4가 Invalid로 판단되는 조건은 다음 세 가지 중 하나라도 만족할 때이다:
-	•	각 옥텟(octet)이 0~255 범위를 벗어날 때
-	•	옥텟이 두 자리 이상인데 ‘0’으로 시작할 때
-(단일 ‘0’은 허용)
-	•	옥텟 개수가 4개가 아닐 때
+## 핵심 개념
+- SUBSTRING_INDEX로 문자열 분리
+- CAST를 통한 타입 변환
+- 복합 OR 조건으로 유효성 검사
+- LENGTH와 REPLACE를 활용한 구분자 개수 확인
 
-문제의 핵심은 문자열을 단순 비교하는 것이 아니라 문자열 분해 + 정수 변환 + 위치 기반 조건 검사를 조합하는 것이다.
+## 접근 방식
+1. 옥텟 개수가 4개인지 확인 (. 개수 = 3)
+2. 각 옥텟을 정수로 변환 후 0~255 범위 검사
+3. Leading Zero 검사 (01, 001 등은 invalid)
+4. 조건 만족하는 IP를 그룹화하여 카운트
 
----
+## 옥텟 개수 검사
+- LENGTH(ip) - LENGTH(REPLACE(ip, '.', '')) <> 3
+- 점(.)을 제거한 길이 차이 = 점의 개수
+- 3이 아니면 옥텟이 4개가 아님
 
-## 2. 접근 전략
+## 옥텟 추출 방법
+- SUBSTRING_INDEX(ip, '.', 1) -- 첫 번째
+- SUBSTRING_INDEX(SUBSTRING_INDEX(ip, '.', 2), '.', -1) -- 두 번째
+- SUBSTRING_INDEX(SUBSTRING_INDEX(ip, '.', 3), '.', -1) -- 세 번째
+- SUBSTRING_INDEX(ip, '.', -1) -- 네 번째
 
-### (1) 옥텟 개수 검사
+## 왜 CAST가 필요한가?
+- 문자열 비교: '99' > '255' (잘못됨)
+- 정수 비교: 99 < 255 (정확함)
+- CAST(... AS UNSIGNED)로 정수 변환 필수
 
-IPv4는 반드시 . 기준 3개의 구분자를 가져야 4개의 옥텟이 존재한다.
-따라서 . 개수가 3이 아닐 경우 invalid 처리한다.
+## Leading Zero 검사
+- LIKE '0%' AND <> '0'
+- '0'으로 시작하면서 '0' 자체가 아닌 경우 invalid
 
-### (2) 옥텟을 정수로 변환 후 범위 검사
-
-SUBSTRING_INDEX()를 이용해 옥텟을 분리한 뒤,
-각 옥텟을 CAST(... AS UNSIGNED)로 정수화하여 255 초과 여부를 확인한다.
-단순 문자열 비교 시 '99' > '225' 같은 오류가 발생하므로 정수 변환이 핵심 요소이다.
-
-### (3) Leading Zero 검사
-
-옥텟이 두 자리 이상이면서 0으로 시작하면 invalid이다.
-단, 숫자 자체가 "0"인 경우만 예외적으로 허용한다.
-
-### (4) invalid IP만 grouping 및 정렬
-	•	invalid IP별 발생 횟수를 COUNT(*)로 계산
-	•	정렬 규칙:
-invalid_count DESC → ip DESC
-
----
+## 시간복잡도
+O(n) - 단일 스캔으로 처리
